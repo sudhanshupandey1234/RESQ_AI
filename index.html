@@ -1,0 +1,42 @@
+
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ResQ.AI - Real CV Prototype</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#07101f;color:#f6f8fb;font-family:Inter,Arial,sans-serif}
+.wrap{max-width:1450px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #20314b;padding-bottom:14px}
+.logo{font-size:24px;font-weight:800}.logo b{color:#ef4444}.sub{color:#8ea0b8;font-size:11px;margin-top:4px}.live{color:#4ade80;font-size:11px;font-weight:700}
+.grid{display:grid;grid-template-columns:1.5fr .8fr;gap:14px;margin-top:14px}.panel{background:#0d192c;border:1px solid #20314b;border-radius:14px;overflow:hidden}.head{padding:13px 15px;border-bottom:1px solid #20314b;display:flex;justify-content:space-between;font-size:13px;font-weight:700}.body{padding:14px}
+.video{position:relative;background:#020812;min-height:510px;display:flex;align-items:center;justify-content:center}.video video,.video canvas{width:100%;height:510px;object-fit:cover}.video canvas{position:absolute;inset:0}.placeholder{color:#64748b;text-align:center}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}button,select{border:1px solid #29405f;background:#13233a;color:#fff;padding:10px 12px;border-radius:8px;cursor:pointer}button.primary{background:#2563eb;border-color:#2563eb}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card{background:#111f35;border:1px solid #20314b;border-radius:11px;padding:12px}.label{color:#8ea0b8;font-size:10px}.num{font-size:26px;font-weight:800;margin-top:5px}.red{color:#ef4444}.blue{color:#3b82f6}.green{color:#22c55e}.yellow{color:#f59e0b}
+.score{display:flex;gap:16px;align-items:center;margin-top:14px}.ring{width:90px;height:90px;border-radius:50%;background:conic-gradient(#ef4444 0 0%,#24344c 0);display:grid;place-items:center;position:relative}.ring:after{content:"";position:absolute;width:68px;height:68px;border-radius:50%;background:#0d192c}.ring b{z-index:1;font-size:21px}.bar{height:8px;background:#20314b;border-radius:8px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:#ef4444;width:0}
+.dispatch{margin-top:12px;background:#111f35;border:1px solid #29405f;border-radius:10px;padding:12px}.dispatch strong{font-size:12px}.dispatch p{font-size:10px;color:#8ea0b8;line-height:1.5}
+.footer{color:#64748b;font-size:10px;margin-top:10px}@media(max-width:900px){.grid{grid-template-columns:1fr}.video video,.video canvas{height:400px}}
+</style></head><body><div class="wrap">
+<div class="top"><div><div class="logo">RESQ<b>.AI</b></div><div class="sub">REAL COMPUTER-VISION DISASTER RESPONSE PROTOTYPE</div></div><div class="live">● AI ENGINE ONLINE</div></div>
+<div class="grid">
+<div class="panel"><div class="head"><span>Live Camera / Disaster Feed</span><span id="fps">READY</span></div><div class="body">
+<div class="video"><video id="video" autoplay muted playsinline></video><canvas id="canvas"></canvas><div id="placeholder" class="placeholder">Click START CAMERA to begin real-time person detection</div></div>
+<div class="controls"><button class="primary" onclick="startCamera()">START CAMERA</button><button onclick="stopCamera()">STOP</button>
+<select id="hazard"><option value="collapse">Structural Collapse</option><option value="fire">Active Fire</option><option value="flood">Rising Flood</option><option value="landslide">Landslide / Debris</option><option value="normal">No Major Hazard</option></select>
+<select id="isolation"><option value="10">Isolation: Medium</option><option value="20">Isolation: Severe</option><option value="0">Isolation: Low</option></select></div>
+</div></div>
+<div><div class="panel"><div class="head">Live AI Metrics</div><div class="body"><div class="cards">
+<div class="card"><div class="label">PEOPLE DETECTED</div><div class="num blue" id="people">0</div></div>
+<div class="card"><div class="label">RISK SCORE</div><div class="num red" id="score">0</div></div>
+<div class="card"><div class="label">THREAT LEVEL</div><div class="num yellow" id="level">LOW</div></div>
+<div class="card"><div class="label">DETECTION ENGINE</div><div class="num green" style="font-size:16px">OpenCV HOG</div></div></div>
+<div class="score"><div class="ring" id="ring"><b id="ringText">0</b></div><div style="flex:1"><div style="font-size:12px;font-weight:700" id="hazardText">Structural Collapse</div><div class="label">Dynamic risk index / 100</div><div class="bar"><i id="bar"></i></div></div></div>
+<div class="dispatch"><strong>SMART DISPATCH RECOMMENDATION</strong><p id="team">Waiting for detection...</p><p id="medical"></p><p id="route"></p><button class="primary" onclick="dispatch()">DISPATCH RECOMMENDED UNIT</button></div>
+</div></div><div class="footer">Real CV detection runs locally in Python. Fire/flood/collapse is the selected scenario input; replace the detector with YOLOv8 custom weights for multi-hazard detection.</div>
+</div></div></div>
+<script>
+const video=document.getElementById('video'),canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');let stream=null,timer=null,busy=false;
+async function startCamera(){try{stream=await navigator.mediaDevices.getUserMedia({video:{width:960,height:540},audio:false});video.srcObject=stream;document.getElementById('placeholder').style.display='none';timer=setInterval(sendFrame,700)}catch(e){alert('Camera permission failed. Allow camera access in Chrome/Edge.')}} 
+function stopCamera(){if(timer)clearInterval(timer);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;document.getElementById('placeholder').style.display='block'}
+async function sendFrame(){if(busy||!video.videoWidth)return;busy=true;canvas.width=video.videoWidth;canvas.height=video.videoHeight;ctx.drawImage(video,0,0);let blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',.7));let fd=new FormData();fd.append('image',blob,'frame.jpg');fd.append('hazard',document.getElementById('hazard').value);fd.append('isolation',document.getElementById('isolation').value);
+try{let res=await fetch('/detect',{method:'POST',body:fd});let d=await res.json();draw(d.boxes);update(d)}catch(e){}busy=false}
+function draw(boxes){ctx.drawImage(video,0,0);ctx.strokeStyle='#22d3ee';ctx.lineWidth=3;ctx.font='bold 14px Arial';for(const b of boxes){ctx.strokeRect(b.x,b.y,b.w,b.h);ctx.fillStyle='#22d3ee';ctx.fillText('PERSON '+Math.round(b.confidence*100)+'%',b.x,b.y>18?b.y-6:b.y+18)}}
+function update(d){document.getElementById('people').textContent=d.people;document.getElementById('score').textContent=d.score;document.getElementById('level').textContent=d.level;document.getElementById('ringText').textContent=d.score;document.getElementById('bar').style.width=d.score+'%';document.getElementById('ring').style.background=`conic-gradient(#ef4444 0 ${d.score}%,#24344c ${d.score}% 100%)`;document.getElementById('hazardText').textContent=d.hazard;document.getElementById('team').textContent='Rescue: '+d.team;document.getElementById('medical').textContent='Medical: '+d.medical;document.getElementById('route').textContent='Route: '+d.route;document.getElementById('fps').textContent='LIVE • '+new Date().toLocaleTimeString()}
+function dispatch(){alert('Dispatch simulated: '+document.getElementById('team').textContent+'\nRoute shared with responder unit.')}
+</script></body></html>
